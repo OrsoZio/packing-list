@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packing List</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #e8ff47;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #666;
+    --danger: #ff4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── EDITOR MODE ─── */
+  #editor-mode {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  .header {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(28px, 5vw, 42px);
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .logo span { color: var(--accent); }
+
+  .header-sub {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding-bottom: 4px;
+  }
+
+  /* Title input */
+  .title-row {
+    margin-bottom: 16px;
+  }
+  .title-row label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .title-row input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .title-row input:focus { border-color: var(--accent); }
+  .title-row input::placeholder { color: var(--muted); font-weight: 400; }
+
+  /* Meta row (commessa + foglio) */
+  .meta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .meta-field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .meta-field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 1px;
+  }
+  .meta-field input:focus { border-color: var(--accent); }
+  .meta-field input::placeholder { color: #444; font-weight: 400; letter-spacing: 0; }
+
+  @media (max-width: 420px) {
+    .meta-row { grid-template-columns: 1fr; }
+  }
+
+  /* Column headers */
+  .col-headers {
+    display: grid;
+    grid-template-columns: 1fr 130px 90px 36px;
+    gap: 8px;
+    padding: 0 4px 8px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Rows */
+  #rows-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .row-item {
+    display: grid;
+    grid-template-columns: 1fr 130px 90px 36px;
+    gap: 8px;
+    align-items: center;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .row-num {
+    display: none;
+  }
+
+  .row-item input, .row-item select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+  .row-item input:focus, .row-item select:focus {
+    border-color: var(--accent);
+    background: #1f1f1f;
+  }
+  .row-item input::placeholder { color: #444; }
+
+  .row-item select option { background: var(--surface); }
+
+  .qty-input { text-align: right; }
+
+  .del-btn {
+    background: none;
+    border: 1px solid #2a2a2a;
+    color: var(--muted);
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .del-btn:hover { border-color: var(--danger); color: var(--danger); background: #1f0000; }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 11px 20px;
+    transition: all 0.15s;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #0f0f0f;
+    font-weight: 500;
+  }
+  .btn-accent:hover { background: #d4eb00; transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: #2a2a2a; }
+
+  /* QR section */
+  #qr-section {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+    margin-top: 24px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+
+  .qr-inner {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  #qrcode {
+    background: white;
+    padding: 12px;
+    flex-shrink: 0;
+  }
+  #qrcode img, #qrcode canvas { display: block; }
+
+  .qr-info h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .qr-info p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+    max-width: 320px;
+    margin-bottom: 16px;
+  }
+  .qr-url {
+    font-size: 10px;
+    color: var(--accent);
+    word-break: break-all;
+    background: #111;
+    padding: 8px 12px;
+    border-left: 2px solid var(--accent);
+    max-width: 340px;
+  }
+
+  .copy-btn {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    padding: 8px 14px;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: #44cc88; color: #44cc88; }
+
+  /* ─── VIEWER MODE ─── */
+  #viewer-mode {
+    display: none;
+    min-height: 100vh;
+    background: #f7f5f0;
+    color: #1a1a1a;
+  }
+
+  .viewer-header {
+    background: #1a1a1a;
+    color: #f7f5f0;
+    padding: 28px 32px;
+  }
+
+  .viewer-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(24px, 4vw, 36px);
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+  }
+
+  .viewer-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  .viewer-badges {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .viewer-badge {
+    background: #333;
+    color: #f7f5f0;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .viewer-badge span { color: var(--accent); margin-right: 4px; }
+
+  .viewer-body {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+  }
+
+  .viewer-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+  }
+
+  .viewer-table thead tr {
+    border-bottom: 2px solid #1a1a1a;
+  }
+
+  .viewer-table th {
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #888;
+    padding: 0 12px 10px;
+    font-weight: 400;
+  }
+  .viewer-table th:last-child { text-align: right; }
+
+  .viewer-table td {
+    padding: 13px 12px;
+    border-bottom: 1px solid #e0ddd6;
+    vertical-align: middle;
+  }
+
+  .viewer-table tr:nth-child(even) td { background: #f0ede6; }
+
+  .viewer-table td:first-child {
+    font-weight: 500;
+    color: #111;
+  }
+
+  .td-qty {
+    text-align: right;
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a1a1a;
+  }
+
+  .td-unit {
+    color: #666;
+    font-size: 12px;
+  }
+
+  .row-index {
+    color: #bbb;
+    font-size: 11px;
+    width: 28px;
+  }
+
+  .viewer-footer {
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    font-size: 10px;
+    color: #aaa;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .summary-badge {
+    display: inline-block;
+    background: #1a1a1a;
+    color: #f7f5f0;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* Error */
+  .error-box {
+    background: #1f0000;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 16px 20px;
+    font-size: 13px;
+    margin-top: 16px;
+  }
+
+  /* Row count indicator */
+  .row-count {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .row-count span { color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .col-headers { grid-template-columns: 1fr 100px 72px 36px; }
+    .row-item { grid-template-columns: 1fr 100px 72px 36px; }
+    .qr-inner { flex-direction: column; }
+    #qrcode { margin: 0 auto; }
+    .viewer-header { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ EDITOR ═══════════ -->
+<div id="editor-mode">
+  <div class="header">
+    <div class="logo">PACK<span>.</span>LIST</div>
+    <div class="header-sub">generatore con QR</div>
+  </div>
+
+  <div class="title-row">
+    <label>Titolo della lista</label>
+    <input type="text" id="list-title" placeholder="es. Spedizione Milano — Marzo 2026" maxlength="80">
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-field">
+      <label>N° Commessa</label>
+      <input type="text" id="list-commessa" placeholder="es. 0042" maxlength="20">
+    </div>
+    <div class="meta-field">
+      <label>N° Foglio</label>
+      <input type="text" id="list-foglio" placeholder="es. 1 di 3" maxlength="20">
+    </div>
+  </div>
+
+  <div class="col-headers">
+    <span>Descrizione</span>
+    <span>Unità</span>
+    <span style="text-align:right">Quantità</span>
+    <span></span>
+  </div>
+
+  <div id="rows-container"></div>
+
+  <div class="row-count">Righe: <span id="row-counter">0</span> / 30</div>
+
+  <div class="action-bar">
+    <button class="btn btn-ghost" onclick="addRow()">+ Aggiungi riga</button>
+    <button class="btn btn-secondary" onclick="clearAll()">✕ Svuota</button>
+    <button class="btn btn-accent" onclick="generateQR()">⬡ Genera QR</button>
+  </div>
+
+  <div id="qr-section">
+    <div class="qr-inner">
+      <div id="qrcode"></div>
+      <div class="qr-info">
+        <h3>QR generato</h3>
+        <p>Scansiona con la fotocamera per aprire la lista. Il link contiene tutti i dati — nessun server, nessun cloud.</p>
+        <div class="qr-url" id="qr-url-display"></div>
+        <button class="copy-btn" id="copy-btn" onclick="copyURL()">
+          <span>⎘</span> Copia link
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="error-box" class="error-box" style="display:none"></div>
+</div>
+
+<!-- ═══════════ VIEWER ═══════════ -->
+<div id="viewer-mode">
+  <div class="viewer-header">
+    <div class="viewer-title" id="v-title">Packing List</div>
+    <div class="viewer-meta" id="v-meta"></div>
+    <div class="viewer-badges" id="v-badges"></div>
+  </div>
+  <div class="viewer-body">
+    <table class="viewer-table">
+      <thead>
+        <tr>
+          <th style="width:28px">#</th>
+          <th>Descrizione</th>
+          <th>Unità</th>
+          <th style="text-align:right">Qtà</th>
+        </tr>
+      </thead>
+      <tbody id="v-tbody"></tbody>
+    </table>
+    <div id="v-summary" style="margin-top:12px"></div>
+    <div class="viewer-footer">
+      <span id="v-footer-date"></span>
+      <span>PACK.LIST — link autonomo</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── UNITS ───────────────────────────────────────────────────────────────
+const UNITS = [
+  'pz','kg','g','l','ml','cf','sacchi','rotoli','scatole','buste','fogli','pallet','colli'
+];
+
+// ─── ROW MANAGEMENT ──────────────────────────────────────────────────────
+let rowId = 0;
+const MAX_ROWS = 30;
+
+function getRows() {
+  return document.querySelectorAll('.row-item');
+}
+
+function updateCounter() {
+  document.getElementById('row-counter').textContent = getRows().length;
+}
+
+function addRow(desc='', unit='pz', qty='') {
+  const container = document.getElementById('rows-container');
+  if (getRows().length >= MAX_ROWS) return;
+
+  const id = ++rowId;
+  const div = document.createElement('div');
+  div.className = 'row-item';
+  div.dataset.id = id;
+
+  const unitOptions = UNITS.map(u =>
+    `<option value="${u}"${u===unit?' selected':''}>${u}</option>`
+  ).join('');
+
+  div.innerHTML = `
+    <input type="text" class="desc-input" placeholder="Descrizione articolo" value="${esc(desc)}" maxlength="60">
+    <select class="unit-input">${unitOptions}</select>
+    <input type="number" class="qty-input" placeholder="0" value="${esc(qty)}" min="0" step="any">
+    <button class="del-btn" onclick="delRow(${id})" title="Rimuovi">×</button>
+  `;
+  container.appendChild(div);
+  updateCounter();
+
+  // Focus on new description field
+  if (!desc) div.querySelector('.desc-input').focus();
+}
+
+function delRow(id) {
+  const el = document.querySelector(`.row-item[data-id="${id}"]`);
+  if (el) { el.remove(); updateCounter(); }
+}
+
+function clearAll() {
+  if (!confirm('Svuotare tutta la lista?')) return;
+  document.getElementById('rows-container').innerHTML = '';
+  document.getElementById('list-title').value = '';
+  document.getElementById('list-commessa').value = '';
+  document.getElementById('list-foglio').value = '';
+  document.getElementById('qr-section').style.display = 'none';
+  rowId = 0;
+  updateCounter();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+// ─── COLLECT DATA ─────────────────────────────────────────────────────────
+function collectData() {
+  const title     = document.getElementById('list-title').value.trim() || 'Packing List';
+  const commessa  = document.getElementById('list-commessa').value.trim();
+  const foglio    = document.getElementById('list-foglio').value.trim();
+  const items = [];
+  document.querySelectorAll('.row-item').forEach(row => {
+    const desc = row.querySelector('.desc-input').value.trim();
+    const unit = row.querySelector('.unit-input').value;
+    const qty  = row.querySelector('.qty-input').value.trim();
+    if (desc || qty) items.push({ d: desc, u: unit, q: qty });
+  });
+  return { title, commessa, foglio, items, date: new Date().toLocaleDateString('it-IT') };
+}
+
+// ─── GENERATE QR ─────────────────────────────────────────────────────────
+function generateQR() {
+  const data = collectData();
+
+  if (data.items.length === 0) {
+    showError('Aggiungi almeno una riga prima di generare il QR.');
+    return;
+  }
+  hideError();
+
+  // Encode: compress JSON → base64url
+  const json = JSON.stringify(data);
+  const compressed = LZString.compressToEncodedURIComponent(json);
+
+  // Build URL pointing to this same file (viewer mode)
+  const baseURL = window.location.href.split('?')[0].split('#')[0];
+  const fullURL = baseURL + '?d=' + compressed;
+
+  if (fullURL.length > 4000) {
+    showError('Lista troppo lunga per un QR leggibile. Riduci le righe o accorcia le descrizioni.');
+    return;
+  }
+
+  // Render QR
+  const qrDiv = document.getElementById('qrcode');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, {
+    text: fullURL,
+    width: 200,
+    height: 200,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // Show URL preview
+  const display = document.getElementById('qr-url-display');
+  const preview = fullURL.length > 80 ? fullURL.slice(0,80) + '…' : fullURL;
+  display.textContent = preview;
+  display._full = fullURL;
+
+  document.getElementById('qr-section').style.display = 'block';
+  document.getElementById('qr-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── COPY URL ─────────────────────────────────────────────────────────────
+function copyURL() {
+  const url = document.getElementById('qr-url-display')._full;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.classList.add('copied');
+    btn.innerHTML = '<span>✓</span> Copiato!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '<span>⎘</span> Copia link';
+    }, 2000);
+  });
+}
+
+// ─── ERROR ────────────────────────────────────────────────────────────────
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = '⚠ ' + msg;
+  box.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('error-box').style.display = 'none';
+}
+
+// ─── VIEWER MODE ──────────────────────────────────────────────────────────
+function renderViewer(data) {
+  document.getElementById('editor-mode').style.display = 'none';
+  document.getElementById('viewer-mode').style.display = 'block';
+  document.title = data.title;
+
+  document.getElementById('v-title').textContent = data.title;
+  document.getElementById('v-meta').textContent =
+    data.date ? 'Generata il ' + data.date : '';
+  document.getElementById('v-footer-date').textContent =
+    data.date ? 'Data: ' + data.date : '';
+
+  // Badges: commessa e foglio
+  const badgesDiv = document.getElementById('v-badges');
+  badgesDiv.innerHTML = '';
+  if (data.commessa) {
+    badgesDiv.innerHTML += `<div class="viewer-badge"><span>COMMESSA</span>${escHtml(data.commessa)}</div>`;
+  }
+  if (data.foglio) {
+    badgesDiv.innerHTML += `<div class="viewer-badge"><span>FOGLIO</span>${escHtml(data.foglio)}</div>`;
+  }
+
+  const tbody = document.getElementById('v-tbody');
+  tbody.innerHTML = '';
+
+  data.items.forEach((item, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="row-index">${i+1}</td>
+      <td>${escHtml(item.d || '—')}</td>
+      <td class="td-unit">${escHtml(item.u)}</td>
+      <td class="td-qty">${escHtml(item.q || '—')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Summary
+  const total = data.items.length;
+  document.getElementById('v-summary').innerHTML =
+    `<span class="summary-badge">${total} articol${total===1?'o':'i'}</span>`;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── ROUTER: check URL params ─────────────────────────────────────────────
+function init() {
+  const params = new URLSearchParams(window.location.search);
+  const d = params.get('d');
+
+  if (d) {
+    // Viewer mode
+    try {
+      const json = LZString.decompressFromEncodedURIComponent(d);
+      const data = JSON.parse(json);
+      renderViewer(data);
+    } catch(e) {
+      document.getElementById('editor-mode').style.display = 'none';
+      document.getElementById('viewer-mode').style.display = 'block';
+      document.getElementById('v-title').textContent = 'Errore nel link';
+      document.getElementById('v-tbody').innerHTML =
+        '<tr><td colspan="4" style="color:#c00;padding:20px">Il link QR non è valido o è danneggiato.</td></tr>';
+    }
+  } else {
+    // Editor mode — add 3 empty rows to start
+    addRow(); addRow(); addRow();
+  }
+}
+
+// Enter key advances to next field
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const inputs = [...document.querySelectorAll('#rows-container input, #rows-container select')];
+    const idx = inputs.indexOf(document.activeElement);
+    if (idx >= 0 && idx < inputs.length - 1) {
+      inputs[idx + 1].focus();
+    } else if (idx === inputs.length - 1) {
+      addRow();
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>
