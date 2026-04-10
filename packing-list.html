@@ -310,6 +310,118 @@
   }
   .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
   .copy-btn.copied { border-color: #44cc88; color: #44cc88; }
+  .print-btn { margin-left: 0; }
+  .print-btn:hover { border-color: #88aaff; color: #88aaff; }
+
+  /* ─── PRINT OVERLAY ─── */
+  #print-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 20px;
+  }
+
+  #print-card {
+    background: #fff;
+    color: #111;
+    width: 100%;
+    max-width: 340px;
+    padding: 28px 24px 20px;
+    font-family: 'DM Mono', monospace;
+    border: 3px solid #111;
+  }
+
+  .pc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #111;
+  }
+
+  .pc-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -1px;
+    color: #111;
+  }
+  .pc-logo span { color: #e8b000; }
+
+  .pc-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .pc-badge {
+    background: #111;
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 3px 7px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .pc-badge span { color: #e8b000; margin-right: 3px; }
+
+  .pc-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #111;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+
+  .pc-qr {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .pc-qr img, .pc-qr canvas { display: block; }
+
+  .pc-footer {
+    font-size: 9px;
+    color: #888;
+    text-align: center;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+  }
+
+  .print-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  /* ─── MEDIA PRINT ─── */
+  @media print {
+    body > * { display: none !important; }
+    #print-overlay {
+      display: block !important;
+      position: static !important;
+      background: none !important;
+      padding: 0 !important;
+    }
+    #print-card {
+      max-width: 100% !important;
+      border: 2px solid #111 !important;
+      box-shadow: none !important;
+      margin: 0 auto;
+      page-break-inside: avoid;
+    }
+    #print-actions { display: none !important; }
+  }
 
   /* ─── VIEWER MODE ─── */
   #viewer-mode {
@@ -525,7 +637,27 @@
         <button class="copy-btn" id="copy-btn" onclick="copyURL()">
           <span>⎘</span> Copia link
         </button>
+        <button class="copy-btn print-btn" onclick="printQR()">
+          <span>⎙</span> Stampa QR
+        </button>
       </div>
+    </div>
+  </div>
+
+  <!-- PRINT OVERLAY -->
+  <div id="print-overlay" style="display:none">
+    <div id="print-card">
+      <div class="pc-header">
+        <div class="pc-logo">PACK<span>.</span>LIST</div>
+        <div class="pc-badges" id="pc-badges"></div>
+      </div>
+      <div class="pc-title" id="pc-title"></div>
+      <div class="pc-qr" id="pc-qr"></div>
+      <div class="pc-footer" id="pc-footer"></div>
+    </div>
+    <div class="print-actions" id="print-actions">
+      <button class="btn btn-accent" onclick="window.print()">⎙ Stampa / Salva PDF</button>
+      <button class="btn btn-secondary" onclick="closePrint()">✕ Chiudi</button>
     </div>
   </div>
 
@@ -698,7 +830,43 @@ function copyURL() {
   });
 }
 
-// ─── ERROR ────────────────────────────────────────────────────────────────
+// ─── PRINT QR ─────────────────────────────────────────────────────────────
+function printQR() {
+  const data = collectData();
+  const url  = document.getElementById('qr-url-display')._full;
+  if (!url) return;
+
+  // Badges
+  const badgesDiv = document.getElementById('pc-badges');
+  badgesDiv.innerHTML = '';
+  if (data.commessa) badgesDiv.innerHTML += `<div class="pc-badge"><span>COM.</span>${escHtml(data.commessa)}</div>`;
+  if (data.foglio)   badgesDiv.innerHTML += `<div class="pc-badge"><span>FOG.</span>${escHtml(data.foglio)}</div>`;
+
+  // Title
+  document.getElementById('pc-title').textContent = data.title;
+
+  // QR (rigenera nel card di stampa)
+  const qrDiv = document.getElementById('pc-qr');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, {
+    text: url,
+    width: 220,
+    height: 220,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  // Footer
+  document.getElementById('pc-footer').textContent =
+    (data.date ? 'Data: ' + data.date + '  —  ' : '') + data.items.length + ' articoli';
+
+  document.getElementById('print-overlay').style.display = 'flex';
+}
+
+function closePrint() {
+  document.getElementById('print-overlay').style.display = 'none';
+}
 function showError(msg) {
   const box = document.getElementById('error-box');
   box.textContent = '⚠ ' + msg;
