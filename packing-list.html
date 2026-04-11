@@ -64,6 +64,45 @@
     padding-bottom: 4px;
   }
 
+  /* Velmet brand — editor */
+  .velmet-brand {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-bottom: 4px;
+  }
+  .velmet-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .velmet-name span { color: var(--accent); }
+  .velmet-sub {
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Velmet brand — viewer header */
+  .viewer-velmet {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #333;
+  }
+  .viewer-velmet span { color: #f0f0f0; }
+
   /* Title input */
   .title-row {
     margin-bottom: 16px;
@@ -399,6 +438,17 @@
     padding-top: 10px;
   }
 
+  .pc-velmet {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  .pc-velmet span { color: #e8b000; }
+
   .print-actions {
     display: flex;
     gap: 10px;
@@ -592,6 +642,10 @@
   <div class="header">
     <div class="logo">PACK<span>.</span>LIST</div>
     <div class="header-sub">generatore con QR</div>
+    <div class="velmet-brand">
+      <div class="velmet-name">VELMET<span>.</span>SRL</div>
+      <div class="velmet-sub">documento interno</div>
+    </div>
   </div>
 
   <div class="title-row">
@@ -651,6 +705,7 @@
         <div class="pc-logo">PACK<span>.</span>LIST</div>
         <div class="pc-badges" id="pc-badges"></div>
       </div>
+      <div class="pc-velmet">VELMET<span>.</span>SRL</div>
       <div class="pc-title" id="pc-title"></div>
       <div class="pc-qr" id="pc-qr"></div>
       <div class="pc-footer" id="pc-footer"></div>
@@ -670,6 +725,7 @@
     <div class="viewer-title" id="v-title">Packing List</div>
     <div class="viewer-meta" id="v-meta"></div>
     <div class="viewer-badges" id="v-badges"></div>
+    <div class="viewer-velmet">VELMET<span>.</span>SRL</div>
   </div>
   <div class="viewer-body">
     <table class="viewer-table">
@@ -919,6 +975,9 @@ function doPrint() {
   .pc-badge { background: #111; color: #fff; font-family: 'DM Mono', monospace;
     font-size: 9px; padding: 3px 7px; letter-spacing: 1px; text-transform: uppercase; }
   .pc-badge span { color: #e8b000; margin-right: 3px; }
+  .pc-velmet { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11px;
+    letter-spacing: 3px; text-transform: uppercase; color: #555; margin-bottom: 10px; }
+  .pc-velmet span { color: #e8b000; }
   .pc-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
     color: #111; margin-bottom: 16px; line-height: 1.3; }
   .pc-qr { display: flex; justify-content: center; margin-bottom: 14px; }
@@ -934,6 +993,7 @@ function doPrint() {
     <div class="pc-logo">PACK<span>.</span>LIST</div>
     <div class="pc-badges">${badgesHtml}</div>
   </div>
+  <div class="pc-velmet">VELMET<span>.</span>SRL</div>
   <div class="pc-title">${escHtml(title)}</div>
   <div class="pc-qr">${qrImg}</div>
   <div class="pc-footer">${escHtml(footer)}</div>
